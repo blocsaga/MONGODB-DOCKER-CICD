@@ -1,0 +1,28 @@
+name: Staging CI
+on:
+  pull_request:
+    branches: ["staging/feature"]
+    types: ["closed"]
+
+jobs:
+  staging_build:
+    runs-on: ["self-hosted", mongorunner]
+    steps:
+      - uses: actions/checkout@v3
+      - name: docker build nginx
+        run: docker build -t appxtract/johnmongorepo:staging mongodb/
+
+      - name: login to docker
+        run: docker login -u appxtract -p ${{secrets.DOCKER_PASSWORD}}
+
+      - run: docker push appxtract/johnmongorepo:staging
+
+  deploy_staging:
+    runs-on: ["self-hosted", mongorunner]
+    needs: staging_build
+    steps:
+      - name: pull docker image
+        run: docker pull appxtract/johnmongorepo:staging
+
+      - name: run staging image and delete container if it stops
+        run: docker run -d --rm -p 3000:80 appxtract/johnmongorepo:staging
